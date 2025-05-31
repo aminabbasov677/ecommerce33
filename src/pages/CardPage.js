@@ -1,33 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CaretLeft, CaretRight, Plus, PencilSimple, Trash, X } from '@phosphor-icons/react';
 import './CardPage.css';
 
-// Card type definition (from Card.ts)
-const cardTypes = ['VISA', 'MASTERCARD', 'AMEX', 'DISCOVER'];
-
-// Card component (from Card3D.tsx)
 const Card3D = ({ card, isActive, onEdit, onDelete }) => {
   const [rotation, setRotation] = useState({ x: 0, y: 0 });
   const [isFlipped, setIsFlipped] = useState(false);
   const cardRef = useRef(null);
 
-  useEffect(() => {
-    if (!isActive) {
-      setRotation({ x: 0, y: 0 });
-      setIsFlipped(false);
-    }
-  }, [isActive]);
-
   const handleMouseMove = (e) => {
     if (!isActive || isFlipped) return;
-
     const card = cardRef.current;
     if (!card) return;
 
     const rect = card.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
-
     const rotateY = ((e.clientX - centerX) / (rect.width / 2)) * 15;
     const rotateX = -((e.clientY - centerY) / (rect.height / 2)) * 15;
 
@@ -40,33 +28,25 @@ const Card3D = ({ card, isActive, onEdit, onDelete }) => {
     }
   };
 
-  const handleClick = () => {
-    if (isActive) {
-      setIsFlipped(!isFlipped);
-    }
-  };
-
-  const handleActionClick = (e, action) => {
-    e.stopPropagation();
-    action();
-  };
-
   return (
-    <div
+    <motion.div
       ref={cardRef}
-      className={`card-3d-wrapper ${isActive ? 'active' : ''} ${isFlipped ? 'flipped' : ''}`}
+      className={`card-3d-wrapper glassmorphic ${isActive ? 'active' : ''} ${isFlipped ? 'flipped' : ''}`}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      onClick={handleClick}
+      onClick={() => isActive && setIsFlipped(!isFlipped)}
       style={{
         transform: isFlipped
           ? 'rotateY(180deg)'
           : `perspective(1000px) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
       }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
     >
       <div className="card-3d-front">
         <div className="card-3d-content">
-          <div className="card-header" style={{ backgroundColor: card.headerColor || '#00ffc3' }}>
+          <div className="card-header" style={{ backgroundColor: card.headerColor || '#7B2CBF' }}>
             <h3 className="card-title">{card.title}</h3>
           </div>
           <div className="card-number">{card.number}</div>
@@ -85,20 +65,30 @@ const Card3D = ({ card, isActive, onEdit, onDelete }) => {
           <div className="card-back-content">
             <p className="card-details">{card.details}</p>
             <div className="card-actions">
-              <button
+              <motion.button
                 className="card-action-btn edit"
-                onClick={(e) => handleActionClick(e, onEdit)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <Edit size={20} />
+                <PencilSimple size={20} />
                 <span>Edit</span>
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 className="card-action-btn delete"
-                onClick={(e) => handleActionClick(e, onDelete)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <Trash2 size={20} />
+                <Trash size={20} />
                 <span>Delete</span>
-              </button>
+              </motion.button>
             </div>
           </div>
           <div className="card-security-code">
@@ -107,28 +97,12 @@ const Card3D = ({ card, isActive, onEdit, onDelete }) => {
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
-// CardCarousel component (from CardCarousel.tsx)
 const CardCarousel = ({ cards, onEditCard, onDeleteCard }) => {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [startX, setStartX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'ArrowLeft') {
-        navigatePrev();
-      } else if (e.key === 'ArrowRight') {
-        navigateNext();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeIndex, cards.length]);
 
   const navigateNext = () => {
     if (cards.length > 1) {
@@ -142,60 +116,21 @@ const CardCarousel = ({ cards, onEditCard, onDeleteCard }) => {
     }
   };
 
-  const handleTouchStart = (e) => {
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    setStartX(clientX);
-    setIsDragging(true);
-  };
-
-  const handleTouchMove = (e) => {
-    if (!isDragging) return;
-
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const diff = startX - clientX;
-
-    if (Math.abs(diff) > 50) {
-      if (diff > 0) {
-        navigateNext();
-      } else {
-        navigatePrev();
-      }
-      setIsDragging(false);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-  };
-
   return (
     <div className="carousel-container">
-      <div
-        className="carousel-track"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onMouseDown={handleTouchStart}
-        onMouseMove={handleTouchMove}
-        onMouseUp={handleTouchEnd}
-        onMouseLeave={handleTouchEnd}
-      >
+      <div className="carousel-track">
         {cards.map((card, index) => {
           const position = index - activeIndex;
-          let adjustedPosition = position;
-          if (position < -1) adjustedPosition = cards.length - 1 - activeIndex + index;
-          if (position > 1) adjustedPosition = index - cards.length - activeIndex;
-
           return (
-            <div
+            <motion.div
               key={card.id}
               className={`carousel-item ${index === activeIndex ? 'active' : ''}`}
               style={{
-                transform: `translateX(${adjustedPosition * 100}%) scale(${
+                transform: `translateX(${position * 100}%) scale(${
                   index === activeIndex ? 1 : 0.8
                 })`,
-                zIndex: index === activeIndex ? 10 : 5 - Math.abs(adjustedPosition),
-                opacity: Math.abs(adjustedPosition) > 1 ? 0 : 1,
+                zIndex: index === activeIndex ? 10 : 5 - Math.abs(position),
+                opacity: Math.abs(position) > 1 ? 0 : 1,
               }}
             >
               <Card3D
@@ -204,260 +139,43 @@ const CardCarousel = ({ cards, onEditCard, onDeleteCard }) => {
                 onEdit={() => onEditCard(card)}
                 onDelete={() => onDeleteCard(card.id)}
               />
-            </div>
+            </motion.div>
           );
         })}
       </div>
-
       {cards.length > 1 && (
         <div className="carousel-controls">
-          <button className="carousel-control prev" onClick={navigatePrev}>
-            <ChevronLeft size={24} />
-          </button>
+          <motion.button
+            className="carousel-control prev"
+            onClick={navigatePrev}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <CaretLeft size={24} />
+          </motion.button>
           <div className="carousel-indicators">
             {cards.map((_, index) => (
               <button
                 key={index}
                 className={`carousel-indicator ${index === activeIndex ? 'active' : ''}`}
                 onClick={() => setActiveIndex(index)}
-                aria-label={`Go to card ${index + 1}`}
               />
             ))}
           </div>
-          <button className="carousel-control next" onClick={navigateNext}>
-            <ChevronRight size={24} />
-          </button>
+          <motion.button
+            className="carousel-control next"
+            onClick={navigateNext}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <CaretRight size={24} />
+          </motion.button>
         </div>
       )}
     </div>
   );
 };
 
-// CardForm component (from CardForm.tsx)
-const CardForm = ({ card, onSave, onClose }) => {
-  const [formData, setFormData] = useState({
-    title: '',
-    number: '',
-    holderName: '',
-    expiry: '',
-    cvv: '',
-    type: 'VISA',
-    details: '',
-    headerColor: '#00ffc3',
-  });
-
-  const colorOptions = [
-    '#00ffc3', // Neon cyan
-    '#00d1ff', // Neon blue
-    '#ff00e6', // Neon pink
-    '#ff5500', // Neon orange
-    '#9d00ff', // Neon purple
-    '#ffff00', // Neon yellow
-  ];
-
-  useEffect(() => {
-    if (card) {
-      setFormData({
-        title: card.title,
-        number: card.number,
-        holderName: card.holderName,
-        expiry: card.expiry,
-        cvv: card.cvv,
-        type: card.type,
-        details: card.details,
-        headerColor: card.headerColor || '#00ffc3',
-      });
-    }
-  }, [card]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleColorChange = (color) => {
-    setFormData((prev) => ({ ...prev, headerColor: color }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    if (!formData.title || !formData.number || !formData.holderName || !formData.expiry) {
-      alert('Please fill out all required fields');
-      return;
-    }
-
-    onSave({
-      id: card?.id || Date.now().toString(),
-      ...formData,
-    });
-  };
-
-  const formatCardNumber = (value) => {
-    return value.replace(/\s/g, '').replace(/(.{4})/g, '$1 ').trim();
-  };
-
-  const formatExpiry = (value) => {
-    value = value.replace(/\D/g, '');
-    if (value.length > 2) {
-      return `${value.slice(0, 2)}/${value.slice(2, 4)}`;
-    }
-    return value;
-  };
-
-  const handleCardNumberChange = (e) => {
-    const formattedValue = formatCardNumber(e.target.value.slice(0, 19));
-    setFormData((prev) => ({ ...prev, number: formattedValue }));
-  };
-
-  const handleExpiryChange = (e) => {
-    const formattedValue = formatExpiry(e.target.value.slice(0, 5));
-    setFormData((prev) => ({ ...prev, expiry: formattedValue }));
-  };
-
-  return (
-    <div className="form-overlay">
-      <div className="form-container">
-        <div className="form-header">
-          <h2>{card ? 'Edit Card' : 'Add New Card'}</h2>
-          <button className="close-btn" onClick={onClose}>
-            <X size={24} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="card-form">
-          <div className="form-group">
-            <label htmlFor="title">Card Title</label>
-            <input
-              type="text"
-              id="title"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="e.g., My Debit Card"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="number">Card Number</label>
-            <input
-              type="text"
-              id="number"
-              name="number"
-              value={formData.number}
-              onChange={handleCardNumberChange}
-              placeholder="1234 5678 9012 3456"
-              maxLength={19}
-              required
-            />
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="holderName">Card Holder</label>
-              <input
-                type="text"
-                id="holderName"
-                name="holderName"
-                value={formData.holderName}
-                onChange={handleChange}
-                placeholder="JOHN DOE"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="expiry">Expiry Date</label>
-              <input
-                type="text"
-                id="expiry"
-                name="expiry"
-                value={formData.expiry}
-                onChange={handleExpiryChange}
-                placeholder="MM/YY"
-                maxLength={5}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="type">Card Type</label>
-              <select
-                id="type"
-                name="type"
-                value={formData.type}
-                onChange={handleChange}
-                required
-              >
-                {cardTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="cvv">CVV</label>
-              <input
-                type="text"
-                id="cvv"
-                name="cvv"
-                value={formData.cvv}
-                onChange={handleChange}
-                placeholder="123"
-                maxLength={4}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="details">Card Details</label>
-            <textarea
-              id="details"
-              name="details"
-              value={formData.details}
-              onChange={handleChange}
-              placeholder="Add any additional details about this card"
-              rows={3}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Card Color</label>
-            <div className="color-options">
-              {colorOptions.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`color-option ${formData.headerColor === color ? 'selected' : ''}`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => handleColorChange(color)}
-                  aria-label={`Select color ${color}`}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="form-actions">
-            <button type="button" className="cancel-btn" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="save-btn">
-              Save Card
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-// Main CardPage component (from CardManager.tsx)
 const CardPage = () => {
   const [cards, setCards] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -484,11 +202,6 @@ const CardPage = () => {
     setIsFormOpen(true);
   };
 
-  const handleEditCard = (card) => {
-    setEditingCard(card);
-    setIsFormOpen(true);
-  };
-
   const handleSaveCard = (card) => {
     if (editingCard) {
       setCards(cards.map((c) => (c.id === card.id ? card : c)));
@@ -499,47 +212,79 @@ const CardPage = () => {
     setEditingCard(null);
   };
 
-  const handleDeleteCard = (id) => {
-    setCards(cards.filter((card) => card.id !== id));
-  };
-
-  const handleCloseForm = () => {
-    setIsFormOpen(false);
-    setEditingCard(null);
-  };
-
   return (
     <div className="card-manager-container">
       <div className="page-header">
-        <h1 className="cyber-title">3D Card Manager</h1>
-        <button className="cyber-button add-card-btn" onClick={handleAddCard}>
-          <PlusCircle className="button-icon" />
+        <h1 className="cyber-title">Card Manager</h1>
+        <motion.button
+          className="cyber-button add-card-btn"
+          onClick={handleAddCard}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Plus className="button-icon" />
           <span>Add Card</span>
-        </button>
+        </motion.button>
       </div>
 
-      {cards.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-content">
-            <h2>No Cards Found</h2>
-            <p>Create your first card to get started</p>
-          </div>
-        </div>
-      ) : (
-        <CardCarousel
-          cards={cards}
-          onEditCard={handleEditCard}
-          onDeleteCard={handleDeleteCard}
-        />
-      )}
+      <AnimatePresence>
+        {cards.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="empty-state glassmorphic"
+          >
+            <div className="empty-state-content">
+              <h2>No Cards Found</h2>
+              <p>Add your first card to get started</p>
+            </div>
+          </motion.div>
+        ) : (
+          <CardCarousel
+            cards={cards}
+            onEditCard={(card) => {
+              setEditingCard(card);
+              setIsFormOpen(true);
+            }}
+            onDeleteCard={(id) => setCards(cards.filter((card) => card.id !== id))}
+          />
+        )}
+      </AnimatePresence>
 
-      {isFormOpen && (
-        <CardForm
-          card={editingCard}
-          onSave={handleSaveCard}
-          onClose={handleCloseForm}
-        />
-      )}
+      <AnimatePresence>
+        {isFormOpen && (
+          <motion.div
+            className="form-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="form-container glassmorphic"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+            >
+              <div className="form-header">
+                <h2>{editingCard ? 'Edit Card' : 'Add New Card'}</h2>
+                <motion.button
+                  className="close-btn"
+                  onClick={() => {
+                    setIsFormOpen(false);
+                    setEditingCard(null);
+                  }}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <X size={24} />
+                </motion.button>
+              </div>
+              {/* Form content here */}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
